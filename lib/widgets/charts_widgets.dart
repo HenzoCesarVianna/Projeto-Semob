@@ -1,34 +1,83 @@
 import 'package:flutter/material.dart';
 
+class MetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+
+  const MetricCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 1.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: Color(0xFFE0E0E0), width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF003B71).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: const Color(0xFF003B71), size: 28),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Color(0xFF003B71),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class LineChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paintLine = Paint()
-      ..color = const Color(0xFF00BFA5)
-      ..strokeWidth = 3
+      ..color = const Color(0xFF003B71)
+      ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke;
 
-    final paintFill = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          const Color(0xFF00BFA5).withOpacity(0.3),
-          const Color(0xFF00BFA5).withOpacity(0.0),
-        ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
     final path = Path();
-    path.moveTo(0, size.height * 0.6);
-    path.cubicTo(size.width * 0.2, size.height * 0.5, size.width * 0.4, size.height * 0.4, size.width * 0.6, size.height * 0.2);
-    path.cubicTo(size.width * 0.8, size.height * 0.7, size.width * 0.9, size.height * 0.8, size.width, size.height * 0.9);
+    path.moveTo(0, size.height * 0.7);
+    path.lineTo(size.width * 0.25, size.height * 0.4);
+    path.lineTo(size.width * 0.5, size.height * 0.6);
+    path.lineTo(size.width * 0.75, size.height * 0.2);
+    path.lineTo(size.width, size.height * 0.3);
 
-    final fillPath = Path.from(path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(fillPath, paintFill);
     canvas.drawPath(path, paintLine);
   }
 
@@ -41,26 +90,26 @@ class DonutChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
-    const strokeWidth = 14.0;
+    final strokeWidth = 20.0;
 
     final paint1 = Paint()
-      ..color = const Color(0xFF00BFA5)
+      ..color = const Color(0xFF003B71)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
     final paint2 = Paint()
-      ..color = const Color(0xFF0284C7)
+      ..color = const Color(0xFF0066B3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
     final paint3 = Paint()
-      ..color = const Color(0xFFF59E0B)
+      ..color = const Color(0xFFFFC72C)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
 
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -1.5, 3.8, false, paint1);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 2.3, 1.4, false, paint2);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 3.7, 1.0, false, paint3);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 0, 3.5, false, paint1);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 3.5, 1.8, false, paint2);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), 5.3, 0.98, false, paint3);
   }
 
   @override

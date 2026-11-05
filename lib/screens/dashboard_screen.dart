@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/dashboard_model.dart';
-import '../services/mock_api_service.dart';
-import '../widgets/sidebar_widget.dart';
 import '../widgets/top_header_widget.dart';
-import '../widgets/charts_widgets.dart';
+import '../widgets/sidebar_widget.dart';
+import '../widgets/mapa_linhas_dialog.dart';
 
 class DashboardMainScreen extends StatefulWidget {
   const DashboardMainScreen({super.key});
@@ -14,71 +12,163 @@ class DashboardMainScreen extends StatefulWidget {
 
 class _DashboardMainScreenState extends State<DashboardMainScreen> {
   int _selectedIndex = 0;
-  late Future<DashboardData> _dashboardDataFuture;
+  bool _isLoading = false;
+
+  Map<String, dynamic>? _dashboardData;
+  final List _frotaList = [];
+  final List _bilhetesList = [];
 
   final List<String> _menuTitles = [
-    'Visão geral',
-    'Operação',
-    'Passageiros',
-    'Financeiro',
-    'Alertas',
+    'Painel de Controle - Visão Geral',
+    'Gestão de Frota e Passageiros',
+    'Categorias e Tipos de Bilhete',
+    'Geração e Importação de Relatórios',
+    'Configurações do Sistema',
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _fetchBackendData();
   }
 
-  void _loadData() {
+  Future<void> _fetchBackendData() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 500));
     setState(() {
-      _dashboardDataFuture = MockApiService.fetchDashboardData(_selectedIndex);
+      _dashboardData = {
+        'totalPassageiros': 0,
+        'frotaAtiva': 0,
+        'quilometragemDia': 0.0,
+      };
+      _isLoading = false;
     });
   }
 
   void _onTabSelected(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _loadData();
-    });
+    setState(() => _selectedIndex = index);
+  }
+
+  void _goHome() {
+    setState(() => _selectedIndex = 0);
+  }
+
+  void _mostrarMapaLinhasCidade() {
+    showDialog(
+      context: context,
+      builder: (context) => const MapaLinhasDialog(),
+    );
+  }
+
+  void _importarArquivo() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Importar Arquivo Operacional'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text('Selecione o arquivo de dados (.csv, .xlsx ou .json) enviado pela garagem:'),
+            SizedBox(height: 16),
+            TextField(
+              readOnly: true,
+              decoration: InputDecoration(
+                hintText: 'Nenhum arquivo selecionado...',
+                suffixIcon: Icon(Icons.attach_file),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Pronto para conexão com backend!'),
+                  backgroundColor: Color(0xFF003B71),
+                ),
+              );
+            },
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Processar Importação'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF003B71),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      backgroundColor: const Color(0xFFF4F6F9),
+      body: Column(
         children: [
-          SidebarWidget(
-            selectedIndex: _selectedIndex,
-            onTabSelected: _onTabSelected,
+          TopHeaderWidget(
+            title: _menuTitles[_selectedIndex],
+            onRefresh: _fetchBackendData,
+            onHomePressed: _goHome,
+            onMapaCidadePressed: _mostrarMapaLinhasCidade,
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
+            color: const Color(0xFF1B365D),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'SEMOB - Secretaria De Mobilidade Urbana',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white30),
+                  ),
+                  child: const Text(
+                    'Uso Interno Operacional',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TopHeaderWidget(
-                  title: _menuTitles[_selectedIndex],
-                  onRefresh: _loadData,
+                SidebarWidget(
+                  selectedIndex: _selectedIndex,
+                  onTabSelected: _onTabSelected,
                 ),
                 Expanded(
-                  child: FutureBuilder<DashboardData>(
-                    future: _dashboardDataFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(color: Color(0xFF00BFA5)),
-                        );
-                      } else if (snapshot.hasError) {
-                        return Center(
-                          child: Text('Erro ao carregar os dados: ${snapshot.error}'),
-                        );
-                      } else if (snapshot.hasData) {
-                        return SingleChildScrollView(
-                          padding: const EdgeInsets.all(24.0),
-                          child: _buildDashboardContent(snapshot.data!),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
+                  child: Container(
+                    padding: const EdgeInsets.all(24.0),
+                    child: _isLoading
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF003B71)),
+                            ),
+                          )
+                        : _buildSelectedTabContent(),
                   ),
                 ),
               ],
@@ -89,148 +179,95 @@ class _DashboardMainScreenState extends State<DashboardMainScreen> {
     );
   }
 
-  Widget _buildDashboardContent(DashboardData data) {
-    return Column(
-      children: [
-        Row(
-          children: data.kpis.map((kpi) {
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 12.0),
-                child: _buildKpiCard(kpi),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 2, child: _buildLineChartCard()),
-            const SizedBox(width: 16),
-            Expanded(flex: 1, child: _buildDonutChartCard()),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 2, child: _buildLinePerformanceTable(data.lines)),
-            const SizedBox(width: 16),
-            Expanded(flex: 1, child: _buildAlertsListCard(data.alerts)),
-          ],
-        ),
-      ],
-    );
+  Widget _buildSelectedTabContent() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildVisaoGeralTab();
+      case 1:
+        return _buildFrotaPassageirosTab();
+      case 2:
+        return _buildTiposBilheteTab();
+      case 3:
+        return _buildRelatoriosPdfTab();
+      case 4:
+        return _buildConfiguracoesTab();
+      default:
+        return _buildVisaoGeralTab();
+    }
   }
 
-  Widget _buildKpiCard(KpiData kpi) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
+  Widget _buildVisaoGeralTab() {
+    return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: const Color(0xFFE0F2FE), borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.analytics_outlined, color: Color(0xFF0284C7), size: 18),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: kpi.isPositive ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  kpi.growth,
-                  style: TextStyle(
-                    color: kpi.isPositive ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          _buildSectionHeader('Resumo de Indicadores Operacionais', Icons.analytics_outlined),
           const SizedBox(height: 16),
-          Text(kpi.title, style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          const SizedBox(height: 4),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(kpi.value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0F2133))),
-              if (kpi.unit != null) ...[
-                const SizedBox(width: 4),
-                Text(kpi.unit!, style: const TextStyle(fontSize: 12, color: Colors.black45)),
-              ]
+              Expanded(
+                child: _buildMetricTile(
+                  'Passageiros Registrados',
+                  '${_dashboardData?['totalPassageiros'] ?? 0}',
+                  Icons.people_alt_outlined,
+                  const Color(0xFF003B71),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMetricTile(
+                  'Veículos em Operação',
+                  '${_dashboardData?['frotaAtiva'] ?? 0}',
+                  Icons.directions_bus_outlined,
+                  const Color(0xFF0066B3),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildMetricTile(
+                  'Quilometragem Percorrida',
+                  '${_dashboardData?['quilometragemDia'] ?? 0.0} km',
+                  Icons.add_road_outlined,
+                  const Color(0xFFD97706),
+                ),
+              ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLineChartCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Movimento da operação', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F2133))),
-          const Text('Passageiros transportados nos últimos 7 dias', style: TextStyle(fontSize: 11, color: Colors.black45)),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 180,
-            width: double.infinity,
-            child: CustomPaint(painter: LineChartPainter()),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDonutChartCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Perfil de passageiros', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F2133))),
-          const Text('Distribuição por categoria', style: TextStyle(fontSize: 11, color: Colors.black45)),
-          const SizedBox(height: 20),
-          Center(
-            child: SizedBox(
-              height: 140,
-              width: 140,
-              child: Stack(
+          const SizedBox(height: 32),
+          _buildSectionHeader('Status de Conexão com o Banco de Dados', Icons.storage_outlined),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Row(
                 children: [
-                  CustomPaint(size: const Size(140, 140), painter: DonutChartPainter()),
-                  const Center(
+                  const Icon(Icons.cloud_sync_outlined, size: 40, color: Color(0xFF003B71)),
+                  const SizedBox(width: 16),
+                  Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('18.420', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('total', style: TextStyle(fontSize: 10, color: Colors.black45)),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'Aguardando Integração Backend (MySQL / MongoDB)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Os dados serão atualizados em tempo real assim que as rotas da API forem conectadas.',
+                          style: TextStyle(color: Colors.black54, fontSize: 13),
+                        ),
                       ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _fetchBackendData,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Testar Conexão'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF003B71),
+                      foregroundColor: Colors.white,
                     ),
                   )
                 ],
@@ -242,85 +279,232 @@ class _DashboardMainScreenState extends State<DashboardMainScreen> {
     );
   }
 
-  Widget _buildLinePerformanceTable(List<BusLineData> lines) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Desempenho por linha', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F2133))),
-          const SizedBox(height: 12),
-          Table(
-            columnWidths: const {
-              0: FixedColumnWidth(60),
-              1: FlexColumnWidth(2),
-              2: FlexColumnWidth(1),
-              3: FlexColumnWidth(1),
-            },
-            children: [
-              const TableRow(
-                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
-                children: [
-                  Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('LINHA', style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold))),
-                  Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('ITINERÁRIO', style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold))),
-                  Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('VIAGENS', style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold))),
-                  Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('PASSAGEIROS', style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold))),
-                ],
+  Widget _buildFrotaPassageirosTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildSectionHeader('Gestão da Frota de Ônibus', Icons.directions_bus_filled_outlined),
+            ElevatedButton.icon(
+              onPressed: () {},
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Novo Veículo'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF003B71),
+                foregroundColor: Colors.white,
               ),
-              ...lines.map((line) => TableRow(
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
-                children: [
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(line.line, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(line.route, style: const TextStyle(fontSize: 12))),
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(line.trips, style: const TextStyle(fontSize: 12))),
-                  Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Text(line.passengers, style: const TextStyle(fontSize: 12))),
-                ],
-              )),
-            ],
-          )
-        ],
-      ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: _frotaList.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.directions_bus_outlined, size: 48, color: Colors.black26),
+                        SizedBox(height: 12),
+                        Text('Nenhum veículo cadastrado no sistema.', style: TextStyle(color: Colors.black54, fontSize: 15)),
+                        Text('Conecte o banco de dados para carregar a lista de frota.', style: TextStyle(color: Colors.black38, fontSize: 13)),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _frotaList.length,
+                    itemBuilder: (context, index) {
+                      final item = _frotaList[index];
+                      return ListTile(
+                        title: Text('Prefixo: ${item['prefixo']}'),
+                        subtitle: Text('Linha: ${item['linha']}'),
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildAlertsListCard(List<AlertData> alerts) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Alertas recentes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F2133))),
-          const SizedBox(height: 12),
-          ...alerts.map((alert) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Row(
+  Widget _buildTiposBilheteTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Classificação de Tarifas e Bilhetes', Icons.confirmation_number_outlined),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Card(
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: _bilhetesList.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.badge_outlined, size: 48, color: Colors.black26),
+                        SizedBox(height: 12),
+                        Text('Sem dados de bilhetagem no momento.', style: TextStyle(color: Colors.black54, fontSize: 15)),
+                      ],
+                    ),
+                  )
+                : Container(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRelatoriosPdfTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Central de Relatórios e Importação de Dados', Icons.folder_open_outlined),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(alert.icon, color: alert.color, size: 18),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(alert.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      Text(alert.subtitle, style: const TextStyle(fontSize: 11, color: Colors.black45)),
-                    ],
-                  ),
+                const Text(
+                  'Gestão Operacional de Arquivos da SEMOB',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF003B71)),
                 ),
-                Text(alert.time, style: const TextStyle(fontSize: 10, color: Colors.black38)),
+                const SizedBox(height: 12),
+                const Text(
+                  'Utilize os botões abaixo para importar arquivos de diários de bordo ou exportar relatórios consolidados.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                Wrap(
+                  spacing: 16,
+                  runSpacing: 12,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _importarArquivo,
+                      icon: const Icon(Icons.file_upload_outlined),
+                      label: const Text('Importar Arquivo (.CSV / .XLSX)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0066B3),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Gerador de PDF pronto para ser conectado!'),
+                            backgroundColor: Color(0xFF003B71),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text('Exportar PDF Completo'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF003B71),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-          )),
-        ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfiguracoesTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('Configurações de Integração e Servidor', Icons.settings_outlined),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  'Parâmetros da API / Backend',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF003B71)),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'URL Base do Backend (API REST)',
+                    hintText: 'https://api.semob.saocaetanodosul.sp.gov.br',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF003B71), size: 22),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF003B71),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
