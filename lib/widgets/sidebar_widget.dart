@@ -22,7 +22,7 @@ class SidebarWidget extends StatelessWidget {
           _buildMenuItem(0, Icons.dashboard_outlined, 'Visão Geral'),
           _buildMenuItem(1, Icons.directions_bus_outlined, 'Frota & Passageiros'),
           _buildMenuItem(2, Icons.confirmation_number_outlined, 'Tipos de Bilhete'),
-          _buildMenuItem(3, Icons.picture_as_pdf_outlined, 'Relatórios PDF'),
+          _buildMenuItem(3, Icons.cloud_upload_outlined, 'Importar & Relatórios'),
           const Divider(color: Colors.white24, indent: 16, endIndent: 16),
           _buildMenuItem(4, Icons.settings_outlined, 'Configurações'),
         ],

@@ -17,8 +17,13 @@ class SemobApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF4F6F9),
         primaryColor: const Color(0xFF003B71),
         fontFamily: 'Roboto',
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF003B71),
+          primary: const Color(0xFF003B71),
+        ),
+        useMaterial3: true,
       ),
-      home: const DashboardMainScreen(), // Nome correto da classe
+      home: const DashboardMainScreen(),
     );
   }
 }
